@@ -41,6 +41,12 @@ bike_workflow = workflow() %>% add_recipe(preppedRecipe) %>%
 
 
 testData = vroom("test.csv")
+testData = testData  %>% mutate(
+  
+  weather = ifelse(weather  >3, 3, weather)
+  
+)
+
 bikePreds = predict(bike_workflow, new_data = testData)
 
 sub = testData %>% mutate(
@@ -54,4 +60,41 @@ colnames(sub) = c("datetime", "count")
 vroom_write(sub, "linRegSub1.csv", delim = ",")
 
 write.csv(sub, "screwVroom.csv")
+
+
+
+# Poisson Reg -------------------------------------------------------------
+
+library(poissonreg)
+
+poi_mod = poisson_reg() %>%
+  set_engine("glm")
+
+bike_pois_workflow = workflow() %>% 
+  add_recipe(my_recipe) %>%
+  add_model(poi_mod) %>% 
+  fit(data = bikeDataTrain)
+
+
+poiPreds = predict(bike_pois_workflow, new_data = testData)
+
+sub = testData %>% mutate(
+  preds = poiPreds$.pred,
+  datetime = as.character(format(datetime))
+  
+) %>% select(datetime, preds) 
+
+
+colnames(sub) = c("datetime", "count") 
+vroom_write(sub, "poiRegSub1.csv", delim = ",")
+ 
+
+
+
+
+
+
+
+
+
 
