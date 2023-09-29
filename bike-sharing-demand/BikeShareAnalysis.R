@@ -223,5 +223,99 @@ sub = testData %>% mutate(
 vroom_write(sub, "penRegSub1.csv", delim = ",")
 
 
+# Regression Trees --------------------------------------------------------
+
+# recursive binary splitting
+# need to restrict to avoid overfitting
+# stopping criteria
+# maxium number of leafs, minimum leaf node size
+# 3) regularization cost complexit, add a penalty term,
+# non linear, no features
+# predictions match the support of the data
+# commonly overfits tune via cv
+# no excessive feature engineering
+
+library(tidymodels)
+library(rpart)
+
+
+rFormula = count ~ datetime + season + holiday + workingday + weather + temp + atemp + humidity + windspeed
+
+my_recipe = recipe(rFormula, data = logTrain) %>%
+  #step_corr(all_numeric_predictors(), threshold = 0.3) %>% 
+  step_mutate(weather = ifelse(weather  >3, 3, weather)) %>%
+  #step_mutate(count = log(count)) %>% # log of the count
+  #step_time(datetime, features = c("hour")) %>% 
+  step_rm(datetime) %>%
+  step_zv(all_predictors()) %>% 
+  step_num2factor(weather, levels = c("1","2","3")) %>%
+  step_num2factor(season, levels = c("1","2","3", "4"))
+  #step_dummy(all_nominal_predictors()) %>%
+  #step_normalize(all_numeric_predictors()) not needed for trees
+
+
+#preppedRecipe = prep(my_recipe)
+#bake(preppedRecipe, logTrain)
+
+my_mod = decision_tree(tree_depth = tune(),
+                       cost_complexity = tune(),
+                       min_n = tune()) %>%
+  set_engine("rpart") %>%
+  set_mode("regression")
+
+
+preg_wf = workflow() %>% add_recipe(my_recipe) %>%
+  add_model(my_mod) 
+# what is the difference between L,v/k, and repeats
+
+tuning_grid = grid_regular(tree_depth(), cost_complexity(), min_n(), levels = 5)
+
+folds = vfold_cv(logTrain, v = 10, repeats = 1)
+
+CV_results = preg_wf %>% tune_grid(resamples = folds, grid = tuning_grid,
+                                   metrics = metric_set(rmse,mae))
+
+
+# final_wf = preg_wf %>% finalize_workflow(bestTune) %>%
+#   fit(data = logTrain)
+
+bestTune = CV_results %>% select_best("rmse")
+
+final_wf = preg_wf %>% finalize_workflow(bestTune) %>%
+  fit(data = logTrain)
+
+logSub = final_wf %>% predict(new_data = testData) # saves count = .pred
+
+
+
+#logSub = final_wf %>% predict(new_data = testData)
+
+sub = testData %>% mutate(
+  count = exp(logSub$.pred),
+  datetime = as.character(format(datetime))
+  
+) %>% select(datetime, count) 
+
+vroom_write(sub, "treeRegSub1.csv", delim = ",")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
