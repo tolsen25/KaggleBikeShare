@@ -12,8 +12,8 @@ testData2 = vroom("test.csv")
 
 
 
-# logTrain2 = bikeDataTrain2 %>%
-#   mutate(count = log(count))
+logTrain2 = bikeDataTrain2 %>%
+  mutate(count = log(count))
 
 
 #View(bikeDataTrain)
@@ -43,7 +43,7 @@ preg_wf2 = workflow() %>% add_recipe(my_recipe2) %>%
   add_model(my_mod2) 
 # what is the difference between L,v/k, and repeats
 
-tuning_grid2 = grid_regular(tree_depth(), cost_complexity(), min_n(), levels = 5)
+  tuning_grid2 = grid_regular(tree_depth(), cost_complexity(), min_n(), levels = 10)
 
 folds2 = vfold_cv(logTrain2, v = 10, repeats = 1)
 
@@ -71,6 +71,6 @@ sub2 = testData2 %>% mutate(
   
 ) %>% select(datetime, count) 
 
-vroom_write(sub2, "treeRegSub1.csv", delim = ",")
+vroom_write(sub2, "treeRegSubFinal1.csv", delim = ",")
 
 
